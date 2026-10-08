@@ -1,0 +1,1018 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CliniBayes</title>
+<meta name="description" content="Calculadora clínica bayesiana: quanto um resultado de exame muda a chance de doença.">
+<meta name="theme-color" content="#F1F4F3" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0B1416" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="CliniBayes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<style>
+:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+img{max-width:100%}
+.install{background:var(--accent-soft);border-bottom:1px solid var(--line)}
+.install .wrap{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding-block:10px;font-size:.88rem}
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,650&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: ferramenta de consulta — cabeçalho com abas e modo; na aba Calcular, entradas à esquerda e resultado à direita (empilha no celular). */
+:root{
+  --bg:#F1F4F3; --surface:#FFFFFF; --sunk:#E7ECEA; --ink:#13272B; --muted:#56696C; --line:#D2DCDA;
+  --accent:#0E5D6D; --accent-ink:#FFFFFF; --accent-soft:#DCEBEC;
+  --pos:#B1452F; --pos-soft:#F4DDD6; --neg:#466A87; --neg-soft:#DCE6EE;
+  --ok:#2C7A4B; --warn:#9A620A; --warn-soft:#F6E9CF; --err:#B3261E;
+  --z0:#DDEBE2; --z1:#F2E8CC; --z2:#F2D9D2;
+  --cell-tn:#CBD6D4;
+  --f-display:"Source Serif 4", Georgia, "Times New Roman", serif;
+  --f-body:"Public Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0B1416; --surface:#122024; --sunk:#0E1A1D; --ink:#E1EBE9; --muted:#93A7A8; --line:#24383C;
+  --accent:#62B4C3; --accent-ink:#06191D; --accent-soft:#16343A;
+  --pos:#E3826A; --pos-soft:#3A2420; --neg:#8DAAC6; --neg-soft:#1B2A37;
+  --ok:#6CC28F; --warn:#E3AC4F; --warn-soft:#33280F; --err:#F2827A;
+  --z0:#173126; --z1:#33301A; --z2:#3A2220; --cell-tn:#2A3D41; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0B1416; --surface:#122024; --sunk:#0E1A1D; --ink:#E1EBE9; --muted:#93A7A8; --line:#24383C;
+  --accent:#62B4C3; --accent-ink:#06191D; --accent-soft:#16343A;
+  --pos:#E3826A; --pos-soft:#3A2420; --neg:#8DAAC6; --neg-soft:#1B2A37;
+  --ok:#6CC28F; --warn:#E3AC4F; --warn-soft:#33280F; --err:#F2827A;
+  --z0:#173126; --z1:#33301A; --z2:#3A2220; --cell-tn:#2A3D41; color-scheme:dark}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;margin:0}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:16px}
+h1,h2,h3{font-family:var(--f-display);font-weight:650;text-wrap:balance;margin:0;line-height:1.2}
+h2{font-size:1.25rem}
+h3{font-size:1.05rem}
+p{margin:0}
+.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* Cabeçalho */
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:10;background:var(--bg);border-bottom:1px solid var(--line)}
+.bar1{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-block:12px 8px}
+.brand{display:flex;align-items:baseline;gap:10px;min-width:0}
+.brand .logo{font-family:var(--f-display);font-size:1.45rem;font-weight:650;letter-spacing:-.01em}
+.brand .logo b{color:var(--accent);font-weight:650}
+.brand small{color:var(--muted);font-size:.8rem}
+.seg{display:inline-flex;background:var(--sunk);border:1px solid var(--line);border-radius:999px;padding:3px;gap:2px}
+.seg button{border:0;background:transparent;padding:5px 12px;border-radius:999px;cursor:pointer;font-size:.85rem;color:var(--muted);font-weight:600}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+nav.tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;padding-bottom:0}
+nav.tabs::-webkit-scrollbar{display:none}
+nav.tabs button{border:0;background:none;padding:9px 12px 10px;cursor:pointer;color:var(--muted);font-weight:600;font-size:.92rem;border-bottom:2.5px solid transparent;white-space:nowrap}
+nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+
+main{padding-block:20px 40px}
+section.tab{display:none}
+section.tab.on{display:block}
+.lede{display:grid;gap:6px;margin-bottom:18px;max-width:68ch}
+.lede h1{font-size:clamp(1.5rem,4vw,2.1rem)}
+.lede p{color:var(--muted)}
+
+/* Modo */
+[data-mode="rapido"] .show-did,[data-mode="rapido"] .show-adv,[data-mode="didatico"] .show-adv{display:none!important}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;display:grid;gap:16px;min-width:0}
+.calc-grid{display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:860px){.calc-grid{grid-template-columns:minmax(0,1fr)}}
+.stack{display:grid;gap:20px;min-width:0}
+.step-h{display:flex;align-items:center;gap:10px}
+.step-h .n{width:26px;height:26px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-weight:700;font-size:.82rem;flex:none}
+
+/* Campos */
+.field{display:grid;gap:5px}
+.lab{display:flex;align-items:center;gap:6px;font-weight:600;font-size:.9rem}
+.lab .sub{font-weight:400;color:var(--muted);font-size:.8rem}
+.help{width:20px;height:20px;border-radius:50%;border:1px solid var(--line);background:var(--sunk);color:var(--muted);font-size:.75rem;font-weight:700;cursor:pointer;display:grid;place-items:center;padding:0;flex:none}
+.help[aria-expanded="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.tip{font-size:.85rem;color:var(--ink);background:var(--accent-soft);border-radius:8px;padding:9px 11px;line-height:1.45}
+.inp{display:flex;align-items:center;background:var(--sunk);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.inp:focus-within{border-color:var(--accent)}
+.inp input{flex:1;min-width:0;border:0;background:transparent;padding:9px 10px;font-family:var(--f-mono);font-size:1rem;outline:none}
+.inp .u{padding:0 10px;color:var(--muted);font-family:var(--f-mono)}
+.inp.txt input{font-family:var(--f-body);font-size:.95rem}
+.field[data-state="err"] .inp{border-color:var(--err)}
+.msg{font-size:.8rem;min-height:0}
+.msg:empty{display:none}
+.msg.err{color:var(--err)}
+.msg.warn{color:var(--warn)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.row4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+@media (max-width:420px){.row4{grid-template-columns:1fr 1fr}}
+.subgroup{display:grid;gap:12px;border-top:1px dashed var(--line);padding-top:14px}
+.subgroup > .gt{font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.note{font-size:.8rem;color:var(--muted)}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:.75rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 9px;border-radius:999px;background:var(--sunk);color:var(--muted)}
+.chip.ok{color:var(--ok)}
+.chip.bad{color:var(--err)}
+
+.btn{border:1px solid var(--line);background:var(--surface);padding:8px 14px;border-radius:8px;cursor:pointer;font-weight:600;font-size:.88rem}
+.btn:hover{border-color:var(--accent)}
+.btn.pri{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.sm{padding:5px 10px;font-size:.8rem}
+.btn.ghost{background:transparent}
+.btn.danger{color:var(--err)}
+.btns{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.toast{font-size:.82rem;color:var(--ok);font-weight:600}
+
+/* Resultados */
+.res-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.outs{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:420px){.outs{grid-template-columns:1fr}}
+.out{border-radius:var(--r);padding:14px 16px;display:grid;gap:2px}
+.out.p{background:var(--pos-soft)}
+.out.n{background:var(--neg-soft)}
+.out .k{font-size:.82rem;font-weight:700}
+.out.p .k{color:var(--pos)}
+.out.n .k{color:var(--neg)}
+.out .v{font-family:var(--f-display);font-size:clamp(2.2rem,6vw,3rem);font-weight:650;line-height:1.05;font-variant-numeric:tabular-nums}
+.out .r{font-size:.8rem;color:var(--muted);font-family:var(--f-mono)}
+.stale .outs,.stale .interp{opacity:.4}
+.interp{display:grid;gap:8px;font-size:.98rem;line-height:1.55}
+.interp .trap{background:var(--warn-soft);border-radius:8px;padding:10px 12px;font-size:.9rem}
+
+/* Barra de limiares */
+.th{display:grid;gap:8px}
+.track{position:relative;height:26px;border-radius:6px;overflow:hidden;display:flex}
+.track span{height:100%}
+.mk{position:absolute;top:-4px;width:0;height:34px}
+.mk i{position:absolute;left:-7px;top:10px;width:14px;height:14px;border-radius:50%;border:2.5px solid var(--surface)}
+.mk.pre i{background:var(--surface);border-color:var(--ink)}
+.mk.pp i{background:var(--pos)}
+.mk.pn i{background:var(--neg)}
+.trackwrap{position:relative;padding-block:4px}
+.ticks{position:relative;height:16px;font-size:.72rem;color:var(--muted)}
+.ticks span{position:absolute;transform:translateX(-50%);font-family:var(--f-mono)}
+.ticks span:first-child{transform:none}
+.ticks span:last-child{transform:translateX(-100%)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.82rem}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.dot{width:11px;height:11px;border-radius:50%;display:inline-block;flex:none}
+.conduct{font-size:.9rem;display:grid;gap:4px}
+
+/* 1000 pessoas */
+.people{display:grid;grid-template-columns:repeat(40,minmax(0,1fr));gap:2px;max-width:560px}
+.people i{aspect-ratio:1;border-radius:50%;background:var(--cell-tn);display:block}
+.people i.tp{background:var(--pos)}
+.people i.fn{background:transparent;box-shadow:inset 0 0 0 1.5px var(--pos)}
+.people i.fp{background:var(--neg)}
+.freqtxt{display:grid;gap:6px;font-size:.92rem}
+.t2{border-collapse:collapse;width:100%;font-size:.88rem;min-width:420px}
+.t2 th,.t2 td{border:1px solid var(--line);padding:8px 10px;text-align:right}
+.t2 th{background:var(--sunk);font-weight:600;text-align:left}
+.t2 td.tp{background:var(--pos-soft)}
+.t2 td.fp{background:var(--neg-soft)}
+.scroll{overflow-x:auto}
+
+details.calcs{border:1px solid var(--line);border-radius:8px;padding:0 14px;background:var(--sunk)}
+details.calcs summary{cursor:pointer;padding:11px 0;font-weight:600;font-size:.9rem}
+.steps{display:grid;gap:10px;padding-bottom:14px;font-size:.9rem}
+.steps .eq{font-family:var(--f-mono);font-size:.85rem;background:var(--surface);border-radius:6px;padding:8px 10px;overflow-x:auto;white-space:nowrap}
+.steps b{font-weight:600}
+
+.warnbox{background:var(--warn-soft);border-radius:8px;padding:11px 13px;font-size:.88rem;display:grid;gap:4px}
+.warnbox strong{color:var(--warn)}
+
+/* Conversor */
+.conv{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:end}
+.conv .eqs{padding-bottom:10px;color:var(--muted);font-weight:700}
+
+/* Sequência */
+.seqrow{display:grid;grid-template-columns:auto minmax(0,1.4fr) repeat(2,minmax(0,1fr)) auto auto;gap:8px;align-items:end;padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--sunk)}
+.seqrow .ix{font-family:var(--f-mono);color:var(--muted);padding-bottom:10px;font-weight:600}
+@media (max-width:640px){.seqrow{grid-template-columns:1fr 1fr}.seqrow .ix{grid-column:1/-1;padding:0}.seqrow .nm{grid-column:1/-1}}
+.res-tog{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
+.res-tog button{border:0;background:transparent;padding:8px 12px;cursor:pointer;font-weight:700}
+.res-tog button[aria-pressed="true"].p{background:var(--pos);color:var(--surface)}
+.res-tog button[aria-pressed="true"].n{background:var(--neg);color:var(--surface)}
+.flow{display:grid;gap:10px}
+.flow .st{display:grid;grid-template-columns:minmax(0,180px) minmax(0,1fr) auto;gap:12px;align-items:center;font-size:.88rem}
+@media (max-width:560px){.flow .st{grid-template-columns:1fr auto}.flow .st .bars{grid-column:1/-1;order:3}}
+.bars{position:relative;height:18px;background:var(--sunk);border-radius:4px;overflow:hidden}
+.bars .b0{position:absolute;inset:0 auto 0 0;background:var(--line)}
+.bars .b1{position:absolute;left:0;top:5px;height:8px;border-radius:3px}
+
+/* Comparar */
+.cmpcards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:760px){.cmpcards{grid-template-columns:1fr}}
+.cmpcard{border:1px solid var(--line);border-radius:8px;padding:12px;display:grid;gap:10px;background:var(--sunk)}
+.tbl{border-collapse:collapse;width:100%;font-size:.9rem;min-width:520px}
+.tbl th,.tbl td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:right;vertical-align:middle}
+.tbl th:first-child,.tbl td:first-child{text-align:left}
+.tbl thead th{font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.badge{display:inline-block;font-size:.7rem;font-weight:700;padding:2px 7px;border-radius:999px;margin-left:6px;vertical-align:middle}
+.badge.p{background:var(--pos-soft);color:var(--pos)}
+.badge.n{background:var(--neg-soft);color:var(--neg)}
+
+/* Exemplos */
+.exgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.ex{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:grid;gap:10px;align-content:start}
+.ex .vals{font-family:var(--f-mono);font-size:.82rem;color:var(--muted)}
+.ex p{font-size:.9rem}
+
+/* Entenda */
+.learn{display:grid;grid-template-columns:200px minmax(0,1fr);gap:28px;align-items:start}
+.toc{position:sticky;top:120px;display:grid;gap:4px;font-size:.85rem}
+@media (max-width:820px){.learn{grid-template-columns:1fr}.toc{display:none}}
+.toc a{color:var(--muted);text-decoration:none;padding:3px 0}
+.toc a:hover{color:var(--accent)}
+.prose{display:grid;gap:26px;max-width:70ch}
+.prose section{display:grid;gap:10px}
+.prose p{line-height:1.65}
+.term{display:grid;gap:6px;padding:14px 16px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
+.term h3 .ab{font-family:var(--f-mono);font-size:.8rem;color:var(--muted);font-weight:400;margin-left:6px}
+.term .like{font-size:.88rem;color:var(--muted)}
+.term .like b{color:var(--ink);font-weight:600}
+.kicker{font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);font-weight:700}
+
+/* Histórico */
+.hist-empty{color:var(--muted);padding:24px 0}
+textarea.exp{width:100%;min-height:160px;font-family:var(--f-mono);font-size:.78rem;background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:10px;resize:vertical}
+
+footer.foot{border-top:1px solid var(--line);padding-block:18px 28px;color:var(--muted);font-size:.82rem}
+footer.foot p{max-width:80ch}
+@media (prefers-reduced-motion:no-preference){.out .v,.mk{transition:left .25s ease}}
+</style>
+</head>
+<body>
+
+<div id="app" data-mode="didatico">
+<header class="top">
+  <div class="wrap">
+    <div class="bar1">
+      <div class="brand"><span class="logo">Clini<b>Bayes</b></span><small>quanto um resultado muda a suspeita</small></div>
+      <div class="seg" role="group" aria-label="Modo de uso">
+        <button type="button" data-mode="rapido" aria-pressed="false">Rápido</button>
+        <button type="button" data-mode="didatico" aria-pressed="true">Didático</button>
+        <button type="button" data-mode="avancado" aria-pressed="false">Avançado</button>
+      </div>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="Seções">
+      <button role="tab" data-tab="calcular" aria-selected="true">Calcular</button>
+      <button role="tab" data-tab="sequencia" aria-selected="false">Sequência</button>
+      <button role="tab" data-tab="comparar" aria-selected="false">Comparar</button>
+      <button role="tab" data-tab="exemplos" aria-selected="false">Exemplos</button>
+      <button role="tab" data-tab="entenda" aria-selected="false">Entenda</button>
+      <button role="tab" data-tab="historico" aria-selected="false">Histórico</button>
+    </nav>
+  </div>
+</header>
+<div class="install" id="install" hidden><div class="wrap"><span id="install-txt"></span><span class="btns"><button type="button" class="btn sm pri" id="install-go" hidden>Instalar</button><button type="button" class="btn sm ghost" id="install-no">Agora não</button></span></div></div>
+
+<main class="wrap">
+
+<!-- ============ CALCULAR ============ -->
+<section class="tab on" id="tab-calcular" role="tabpanel">
+  <div class="lede">
+    <h1>O resultado mudou a suspeita. Quanto?</h1>
+    <p>Diga quão provável a doença parecia antes do exame e quão bom é o exame. A calculadora mostra a chance depois de um resultado positivo e depois de um negativo.</p>
+  </div>
+
+  <div class="calc-grid">
+    <form class="panel" id="calc-form" autocomplete="off" novalidate>
+      <div class="step-h"><span class="n">1</span><h2>Dados de entrada</h2></div>
+
+      <div class="row2">
+        <div class="field">
+          <label class="lab" for="c-dz">Doença ou hipótese <span class="sub">opcional</span></label>
+          <div class="inp txt"><input id="c-dz" maxlength="60" placeholder="ex.: tromboembolismo"></div>
+        </div>
+        <div class="field">
+          <label class="lab" for="c-tx">Exame <span class="sub">opcional</span></label>
+          <div class="inp txt"><input id="c-tx" maxlength="60" placeholder="ex.: dímero-D"></div>
+        </div>
+      </div>
+      <p class="note">Não escreva nome nem dados do paciente. O histórico fica salvo neste navegador.</p>
+
+      <div class="field" data-f="pre">
+        <div class="lab"><label for="c-pre">Chance antes do exame</label><span class="sub">probabilidade pré-teste</span><button type="button" class="help" aria-expanded="false" data-tip="t-pre">?</button></div>
+        <p class="tip" id="t-pre" hidden>Sua estimativa, antes de ver o resultado, de que esta pessoa tem a doença. Vem da prevalência no seu tipo de serviço, ajustada pela história, pelo exame físico e pelos fatores de risco. É o número mais importante e o mais incerto da conta.</p>
+        <div class="inp"><input id="c-pre" inputmode="decimal" value="10"><span class="u">%</span></div>
+        <p class="msg" id="m-pre"></p>
+      </div>
+
+      <div class="seg" role="group" aria-label="Como descrever o exame" style="justify-self:start">
+        <button type="button" data-in="ss" aria-pressed="true">Sensibilidade e especificidade</button>
+        <button type="button" data-in="lr" aria-pressed="false">Razões de verossimilhança</button>
+      </div>
+
+      <div id="in-ss" class="row2">
+        <div class="field" data-f="se">
+          <div class="lab"><label for="c-se">Sensibilidade</label><button type="button" class="help" aria-expanded="false" data-tip="t-se">?</button></div>
+          <p class="tip" id="t-se" hidden>De cada 100 pessoas <b>com</b> a doença, quantas o exame acusa (resultado positivo). Sensibilidade alta quer dizer que o exame raramente deixa um doente passar.</p>
+          <div class="inp"><input id="c-se" inputmode="decimal" value="90"><span class="u">%</span></div>
+          <p class="msg" id="m-se"></p>
+        </div>
+        <div class="field" data-f="sp">
+          <div class="lab"><label for="c-sp">Especificidade</label><button type="button" class="help" aria-expanded="false" data-tip="t-sp">?</button></div>
+          <p class="tip" id="t-sp" hidden>De cada 100 pessoas <b>sem</b> a doença, quantas o exame deixa em paz (resultado negativo). Especificidade alta quer dizer que o exame raramente dá alarme falso.</p>
+          <div class="inp"><input id="c-sp" inputmode="decimal" value="90"><span class="u">%</span></div>
+          <p class="msg" id="m-sp"></p>
+        </div>
+      </div>
+
+      <div id="in-lr" class="row2" hidden>
+        <div class="field" data-f="lrp">
+          <div class="lab"><label for="c-lrp">Razão do positivo</label><span class="sub">LR+</span><button type="button" class="help" aria-expanded="false" data-tip="t-lrp">?</button></div>
+          <p class="tip" id="t-lrp" hidden>Quantas vezes um resultado positivo é mais comum em quem tem a doença do que em quem não tem. Acima de 10 costuma mudar muito a suspeita; perto de 1 não muda nada.</p>
+          <div class="inp"><input id="c-lrp" inputmode="decimal" value="9"></div>
+          <p class="msg" id="m-lrp"></p>
+        </div>
+        <div class="field" data-f="lrn">
+          <div class="lab"><label for="c-lrn">Razão do negativo</label><span class="sub">LR−</span><button type="button" class="help" aria-expanded="false" data-tip="t-lrn">?</button></div>
+          <p class="tip" id="t-lrn" hidden>Quanto um resultado negativo é comum em quem tem a doença, comparado a quem não tem. Abaixo de 0,1 costuma derrubar bem a suspeita; perto de 1 não muda nada.</p>
+          <div class="inp"><input id="c-lrn" inputmode="decimal" value="0,11"></div>
+          <p class="msg" id="m-lrn"></p>
+        </div>
+        <p class="note" style="grid-column:1/-1">Use razões publicadas para o mesmo exame, no mesmo ponto de corte e numa população parecida com a sua.</p>
+      </div>
+
+      <div class="subgroup show-did">
+        <div class="gt">Limiares de decisão</div>
+        <div class="row2">
+          <div class="field" data-f="tt">
+            <div class="lab"><label for="c-tt">Limiar de testar</label><button type="button" class="help" aria-expanded="false" data-tip="t-tt">?</button></div>
+            <p class="tip" id="t-tt" hidden>Abaixo desta chance, a doença é tão improvável que você nem investigaria mais. É uma escolha clínica: depende da gravidade da doença e dos riscos de investigar.</p>
+            <div class="inp"><input id="c-tt" inputmode="decimal" value="5"><span class="u">%</span></div>
+            <p class="msg" id="m-tt"></p>
+          </div>
+          <div class="field" data-f="tr">
+            <div class="lab"><label for="c-tr">Limiar de tratar</label><button type="button" class="help" aria-expanded="false" data-tip="t-tr">?</button></div>
+            <p class="tip" id="t-tr" hidden>Acima desta chance, você já trataria sem precisar de mais exames. Fica mais baixo quando o tratamento é seguro e a doença é grave; mais alto quando o tratamento é arriscado.</p>
+            <div class="inp"><input id="c-tr" inputmode="decimal" value="70"><span class="u">%</span></div>
+            <p class="msg" id="m-tr"></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="subgroup show-adv" id="ci-box">
+        <div class="gt">Incerteza dos números</div>
+        <p class="note">Opcional. Preencha as faixas que tiver; as vazias contam como exatas.</p>
+        <div class="field">
+          <div class="lab">Faixa da chance antes do exame <button type="button" class="help" aria-expanded="false" data-tip="t-prer">?</button></div>
+          <p class="tip" id="t-prer" hidden>Se você acha que a chance inicial está "entre 5% e 20%", escreva os dois extremos. Isso costuma pesar mais no resultado do que a incerteza do exame.</p>
+          <div class="row2">
+            <div class="inp"><input id="c-preL" inputmode="decimal" placeholder="mín." aria-label="Chance antes do exame, mínimo"><span class="u">%</span></div>
+            <div class="inp"><input id="c-preU" inputmode="decimal" placeholder="máx." aria-label="Chance antes do exame, máximo"><span class="u">%</span></div>
+          </div>
+        </div>
+        <div class="field ss-only">
+          <div class="lab">Intervalos de confiança do estudo <button type="button" class="help" aria-expanded="false" data-tip="t-ci">?</button></div>
+          <p class="tip" id="t-ci" hidden>O estudo que mediu o exame tinha um número limitado de pacientes, então sensibilidade e especificidade vêm com uma faixa provável (em geral de 95%). A calculadora combina os extremos para dar a faixa mais larga possível do resultado.</p>
+          <div class="row4">
+            <div class="inp"><input id="c-seL" inputmode="decimal" placeholder="sens. mín." aria-label="Sensibilidade, limite inferior"></div>
+            <div class="inp"><input id="c-seU" inputmode="decimal" placeholder="sens. máx." aria-label="Sensibilidade, limite superior"></div>
+            <div class="inp"><input id="c-spL" inputmode="decimal" placeholder="espec. mín." aria-label="Especificidade, limite inferior"></div>
+            <div class="inp"><input id="c-spU" inputmode="decimal" placeholder="espec. máx." aria-label="Especificidade, limite superior"></div>
+          </div>
+        </div>
+        <p class="msg" id="m-ci"></p>
+        <p class="note">É uma estimativa conservadora, pela combinação dos limites. Não substitui uma análise estatística conjunta.</p>
+      </div>
+
+      <div class="btns">
+        <button type="button" class="btn ghost sm" id="c-reset">Restaurar exemplo</button>
+      </div>
+    </form>
+
+    <div class="stack" id="results">
+      <div class="panel">
+        <div class="res-head">
+          <div class="step-h"><span class="n">2</span><h2>Chance depois do exame</h2></div>
+          <span class="chip ok" id="c-status">Valores válidos</span>
+        </div>
+        <div class="outs">
+          <div class="out p"><span class="k">Se der positivo</span><span class="v" id="o-pp">50,0%</span><span class="r" id="o-ppr"></span></div>
+          <div class="out n"><span class="k">Se der negativo</span><span class="v" id="o-pn">1,2%</span><span class="r" id="o-pnr"></span></div>
+        </div>
+        <div class="interp" id="o-interp"></div>
+
+        <div class="th show-did" id="th-box">
+          <div class="trackwrap">
+            <div class="track" id="th-track"><span style="background:var(--z0)"></span><span style="background:var(--z1)"></span><span style="background:var(--z2)"></span></div>
+            <div class="mk pre" id="mk-pre"><i></i></div>
+            <div class="mk pn" id="mk-pn"><i></i></div>
+            <div class="mk pp" id="mk-pp"><i></i></div>
+          </div>
+          <div class="ticks" id="th-ticks"></div>
+          <div class="legend" id="th-legend"></div>
+          <div class="conduct" id="th-conduct"></div>
+        </div>
+
+        <div class="btns">
+          <button type="button" class="btn pri" id="c-save">Salvar no histórico</button>
+          <button type="button" class="btn" id="c-copy">Copiar resumo</button>
+          <span class="toast" id="c-toast" aria-live="polite"></span>
+        </div>
+        <textarea class="exp" id="c-copybox" hidden readonly aria-label="Resumo para copiar"></textarea>
+      </div>
+
+      <div class="panel show-did" id="freq-panel">
+        <div class="step-h"><span class="n">3</span><h2>Imagine 1.000 pessoas iguais a esta</h2></div>
+        <div id="freq-on">
+          <div class="stack" style="gap:16px">
+            <div class="people" id="people" aria-hidden="true"></div>
+            <div class="legend">
+              <span><i class="dot" style="background:var(--pos)"></i>doente, exame positivo</span>
+              <span><i class="dot" style="box-shadow:inset 0 0 0 1.5px var(--pos)"></i>doente, exame negativo</span>
+              <span><i class="dot" style="background:var(--neg)"></i>sem doença, exame positivo</span>
+              <span><i class="dot" style="background:var(--cell-tn)"></i>sem doença, exame negativo</span>
+            </div>
+            <div class="freqtxt" id="freq-txt"></div>
+            <div class="scroll">
+              <table class="t2" id="t2"></table>
+            </div>
+          </div>
+        </div>
+        <p class="note" id="freq-off" hidden>Com as razões de verossimilhança não dá para desenhar as 1.000 pessoas: a razão diz quanto o resultado muda a chance, mas não quantos doentes testam positivo. Use sensibilidade e especificidade para ver o desenho.</p>
+      </div>
+
+      <div class="panel show-did">
+        <details class="calcs" id="calcs">
+          <summary>Ver as contas, passo a passo</summary>
+          <div class="steps" id="steps"></div>
+        </details>
+      </div>
+
+      <div class="panel show-adv">
+        <div class="step-h"><h2>Conversor de probabilidade e chance</h2><button type="button" class="help" aria-expanded="false" data-tip="t-odds">?</button></div>
+        <p class="tip" id="t-odds" hidden>Probabilidade conta "quantos em cada total": 20% é 1 em 5. Chance (odds) compara "quantos têm contra quantos não têm": 1 contra 4. São a mesma informação escrita de dois jeitos; as razões de verossimilhança multiplicam a chance, não a probabilidade.</p>
+        <div class="conv">
+          <div class="field"><label class="lab" for="cv-p">Probabilidade</label><div class="inp"><input id="cv-p" inputmode="decimal" value="20"><span class="u">%</span></div></div>
+          <span class="eqs">=</span>
+          <div class="field"><label class="lab" for="cv-o">Chance (odds)</label><div class="inp"><input id="cv-o" inputmode="decimal" value="1 : 4"></div></div>
+        </div>
+        <p class="note" id="cv-note"></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SEQUÊNCIA ============ -->
+<section class="tab" id="tab-sequencia" role="tabpanel">
+  <div class="lede">
+    <h1>Um exame depois do outro</h1>
+    <p>A chance depois do primeiro exame vira a chance antes do segundo. Acrescente os exames na ordem em que foram feitos e marque o resultado de cada um.</p>
+  </div>
+  <div class="panel">
+    <div class="row2" style="max-width:420px">
+      <div class="field">
+        <label class="lab" for="s-pre">Chance antes do primeiro exame</label>
+        <div class="inp"><input id="s-pre" inputmode="decimal" value="20"><span class="u">%</span></div>
+        <p class="msg" id="m-s-pre"></p>
+      </div>
+    </div>
+    <div class="stack" id="seq-rows" style="gap:10px"></div>
+    <div class="btns"><button type="button" class="btn" id="s-add">Acrescentar exame</button></div>
+    <div class="warnbox"><strong>Cuidado com exames que medem a mesma coisa</strong><span>A conta em cadeia supõe que, dentro do grupo de doentes (e dentro do grupo sem doença), o resultado de um exame não influencia o do outro. Dois exames que dependem do mesmo fenômeno, como duas medidas do mesmo marcador ou dois exames de imagem do mesmo achado, tendem a errar juntos. Nesse caso a conta exagera a certeza.</span></div>
+  </div>
+  <div class="panel" style="margin-top:20px">
+    <h2>Como a chance andou</h2>
+    <div class="flow" id="seq-flow"></div>
+    <div class="interp" id="seq-sum"></div>
+  </div>
+</section>
+
+<!-- ============ COMPARAR ============ -->
+<section class="tab" id="tab-comparar" role="tabpanel">
+  <div class="lede">
+    <h1>Qual exame ajuda mais aqui?</h1>
+    <p>Mesmo paciente, mesma chance inicial, três exames. Compare quanto cada um sobe a suspeita quando dá positivo e quanto derruba quando dá negativo.</p>
+  </div>
+  <div class="panel">
+    <div class="field" style="max-width:220px">
+      <label class="lab" for="k-pre">Chance antes do exame</label>
+      <div class="inp"><input id="k-pre" inputmode="decimal" value="15"><span class="u">%</span></div>
+      <p class="msg" id="m-k-pre"></p>
+    </div>
+    <div class="cmpcards" id="cmp-cards"></div>
+  </div>
+  <div class="panel" style="margin-top:20px">
+    <div class="scroll"><table class="tbl" id="cmp-tbl"></table></div>
+    <div class="interp" id="cmp-sum"></div>
+    <p class="note">"Bom para confirmar" é o exame com a maior razão do positivo; "bom para descartar", o de menor razão do negativo. Um exame pode ser bom para uma coisa e fraco para a outra.</p>
+  </div>
+</section>
+
+<!-- ============ EXEMPLOS ============ -->
+<section class="tab" id="tab-exemplos" role="tabpanel">
+  <div class="lede">
+    <h1>Cenários para treinar a intuição</h1>
+    <p>Os valores são fictícios e foram escolhidos para ensinar. Para usar com um paciente, busque os números do exame real, no mesmo ponto de corte e numa população parecida com a sua.</p>
+  </div>
+  <div class="exgrid" id="ex-grid"></div>
+</section>
+
+<!-- ============ ENTENDA ============ -->
+<section class="tab" id="tab-entenda" role="tabpanel">
+  <div class="lede">
+    <h1>Entenda sem saber estatística</h1>
+    <p>Cada número da calculadora explicado em linguagem comum, com um exemplo de 1.000 pessoas.</p>
+  </div>
+  <div class="learn">
+    <nav class="toc" aria-label="Nesta aba">
+      <a href="#e-pergunta">A pergunta</a>
+      <a href="#e-termos">Cada número</a>
+      <a href="#e-conta">A conta, devagar</a>
+      <a href="#e-erros">Erros comuns</a>
+      <a href="#e-limites">Limites da ferramenta</a>
+    </nav>
+    <div class="prose">
+      <section id="e-pergunta">
+        <span class="kicker">A pergunta</span>
+        <h2>O exame deu positivo. E agora, qual a chance de ser doença?</h2>
+        <p>A pergunta parece ser respondida pela sensibilidade, mas não é. A sensibilidade responde a outra coisa: <em>entre quem tem a doença, quantos dão positivo</em>. No consultório você está do outro lado: tem um positivo na mão e quer saber <em>entre quem dá positivo, quantos têm a doença</em>.</p>
+        <p>Para virar uma pergunta na outra, falta uma peça: quantas pessoas como esta têm a doença antes de qualquer exame. Esse é o papel da chance antes do exame. O teorema de Bayes é só a regra que junta as três peças.</p>
+        <p>Exemplo: a doença atinge 10 em cada 100 pessoas parecidas com a sua paciente, e o exame acerta 90% dos doentes e 90% dos sadios. Em 1.000 pessoas, 100 têm a doença e 90 delas dão positivo. Das 900 sadias, 10% dão positivo por engano: outras 90. São 180 positivos, metade verdadeiros. A chance depois do positivo é 50%, não 90%.</p>
+      </section>
+
+      <section id="e-termos">
+        <span class="kicker">Cada número</span>
+        <h2>O que significa cada campo</h2>
+
+        <div class="term"><h3>Chance antes do exame<span class="ab">probabilidade pré-teste</span></h3>
+          <p>Quão provável a doença parece antes de olhar o resultado. Começa pela frequência da doença no seu tipo de atendimento (no posto é uma; no pronto-socorro, outra) e se ajusta com os sintomas, o exame físico e os fatores de risco. Escores clínicos validados ajudam a chegar nesse número.</p>
+          <p class="like"><b>Em 1.000 pessoas:</b> 10% quer dizer 100 doentes e 900 sem a doença.</p></div>
+
+        <div class="term"><h3>Sensibilidade</h3>
+          <p>Entre quem tem a doença, a fração que o exame acusa. Diz se o exame "enxerga" a doença quando ela está lá.</p>
+          <p class="like"><b>Em 1.000 pessoas:</b> com 100 doentes e sensibilidade de 90%, 90 dão positivo e 10 escapam com resultado negativo.</p></div>
+
+        <div class="term"><h3>Especificidade</h3>
+          <p>Entre quem não tem a doença, a fração em que o exame fica negativo. Diz se o exame evita alarmes falsos.</p>
+          <p class="like"><b>Em 1.000 pessoas:</b> com 900 sem doença e especificidade de 90%, 810 dão negativo e 90 dão positivo por engano.</p></div>
+
+        <div class="term"><h3>Verdadeiros e falsos, positivos e negativos</h3>
+          <p><b>Verdadeiro positivo:</b> tem a doença e o exame acusou. <b>Falso negativo:</b> tem a doença e o exame não acusou. <b>Falso positivo:</b> não tem e o exame acusou. <b>Verdadeiro negativo:</b> não tem e o exame não acusou. A tabela 2×2 é só essas quatro caixas lado a lado.</p></div>
+
+        <div class="term"><h3>Chance depois do exame<span class="ab">probabilidade pós-teste</span></h3>
+          <p>A resposta que importa na prática. Depois de um positivo, é a fração de verdadeiros entre todos os positivos (o "valor preditivo positivo"). Depois de um negativo, é a fração de doentes que sobrou entre todos os negativos.</p>
+          <p class="like"><b>Em 1.000 pessoas:</b> 90 verdadeiros entre 180 positivos dá 50%. 10 doentes entre 820 negativos dá 1,2%.</p></div>
+
+        <div class="term"><h3>Razão do positivo<span class="ab">razão de verossimilhança positiva, LR+</span></h3>
+          <p>Quantas vezes um positivo é mais comum em doentes do que em sadios. É sensibilidade dividida pela taxa de alarme falso (100% menos a especificidade). O bom dela é que não depende da chance inicial: serve como um "multiplicador" que você leva de um paciente a outro.</p>
+          <p class="like"><b>Regra prática:</b> acima de 10, muda muito; de 5 a 10, moderado; de 2 a 5, pouco; perto de 1, nada.</p></div>
+
+        <div class="term"><h3>Razão do negativo<span class="ab">razão de verossimilhança negativa, LR−</span></h3>
+          <p>Quão comum é um negativo em doentes comparado a sadios. É a fração de doentes que escapam (100% menos a sensibilidade) dividida pela especificidade. Quanto mais perto de zero, mais o negativo derruba a suspeita.</p>
+          <p class="like"><b>Regra prática:</b> abaixo de 0,1, derruba muito; de 0,1 a 0,2, moderado; de 0,2 a 0,5, pouco; perto de 1, nada.</p></div>
+
+        <div class="term"><h3>Chance em forma de "contra"<span class="ab">odds</span></h3>
+          <p>Outro jeito de escrever a mesma probabilidade: em vez de "1 em 5", diz-se "1 contra 4". As razões de verossimilhança multiplicam essa forma, por isso a conta passa por ela e depois volta para porcentagem.</p></div>
+
+        <div class="term"><h3>Limiar de testar e limiar de tratar</h3>
+          <p>Duas linhas que você mesmo traça. Abaixo da primeira, a doença é improvável o bastante para parar de investigar. Acima da segunda, é provável o bastante para tratar. Entre as duas fica a zona em que um exame pode mudar a conduta. Se o resultado não tira a chance da zona em que ela estava, o exame ajudou pouco naquela decisão.</p></div>
+
+        <div class="term"><h3>Intervalo de confiança</h3>
+          <p>A faixa em que provavelmente está o valor verdadeiro da sensibilidade ou especificidade, dado o tamanho do estudo. Estudos pequenos dão faixas largas. Na calculadora, os extremos são combinados para mostrar a pior e a melhor hipótese do resultado final.</p></div>
+
+        <div class="term"><h3>Frequências naturais</h3>
+          <p>Contar pessoas em vez de porcentagens. O cérebro erra muito menos pensando em "90 de 180" do que em "sensibilidade de 90% com prevalência de 10%". O desenho de 1.000 pontos existe por isso.</p></div>
+      </section>
+
+      <section id="e-conta">
+        <span class="kicker">A conta, devagar</span>
+        <h2>Do pré-teste ao pós-teste em quatro passos</h2>
+        <p><b>1. Transformar a chance inicial em "contra".</b> 10% vira 10 contra 90, ou seja, 0,111.</p>
+        <p><b>2. Calcular a razão do exame.</b> Sensibilidade 90% e especificidade 90%: razão do positivo = 0,90 ÷ 0,10 = 9.</p>
+        <p><b>3. Multiplicar.</b> 0,111 × 9 = 1, ou seja, 1 contra 1.</p>
+        <p><b>4. Voltar para porcentagem.</b> 1 contra 1 é 1 em 2: 50%.</p>
+        <p>A aba Calcular, no modo Didático, mostra esses passos com os seus números.</p>
+      </section>
+
+      <section id="e-erros">
+        <span class="kicker">Erros comuns</span>
+        <h2>Onde a intuição tropeça</h2>
+        <p><b>Ler a sensibilidade como se fosse a chance de doença.</b> Um exame com 90% de sensibilidade pode ter só 50% de positivos verdadeiros, ou menos, se a doença for rara.</p>
+        <p><b>Esquecer a chance inicial.</b> O mesmo exame, com o mesmo resultado, significa coisas muito diferentes num rastreamento e num paciente com quadro típico.</p>
+        <p><b>Pedir exame quando nada vai mudar.</b> Se a chance já está acima do limiar de tratar e nem um negativo a tiraria de lá, o exame não muda a conduta.</p>
+        <p><b>Somar exames parecidos como se fossem independentes.</b> Dois exames que medem a mesma coisa erram juntos, e a conta em cadeia exagera a certeza.</p>
+        <p><b>Usar números de outro cenário.</b> Sensibilidade e especificidade mudam com o ponto de corte, a gravidade dos casos e o tipo de população do estudo.</p>
+      </section>
+
+      <section id="e-limites">
+        <span class="kicker">Limites</span>
+        <h2>O que a calculadora não faz</h2>
+        <p>Ela não diagnostica nem indica tratamento. O resultado é tão bom quanto a chance inicial que você informou e quanto a semelhança entre o estudo do exame e o seu paciente. Use como apoio para pensar, não como resposta final.</p>
+      </section>
+    </div>
+  </div>
+</section>
+
+<!-- ============ HISTÓRICO ============ -->
+<section class="tab" id="tab-historico" role="tabpanel">
+  <div class="lede">
+    <h1>Histórico</h1>
+    <p>Cálculos salvos ficam apenas neste navegador, neste aparelho. Nada é enviado.</p>
+  </div>
+  <div class="panel">
+    <div id="h-list"></div>
+    <div class="btns">
+      <button type="button" class="btn" id="h-csv">Exportar CSV</button>
+      <button type="button" class="btn" id="h-json">Exportar JSON</button>
+      <button type="button" class="btn danger" id="h-clear">Apagar tudo</button>
+      <span id="h-confirm" hidden class="btns"><span class="note">Apagar todos os cálculos salvos?</span><button type="button" class="btn sm danger" id="h-yes">Sim, apagar</button><button type="button" class="btn sm" id="h-no">Cancelar</button></span>
+    </div>
+    <div id="h-exp" hidden class="stack" style="gap:8px">
+      <textarea class="exp" id="h-text" readonly aria-label="Dados exportados"></textarea>
+      <div class="btns"><button type="button" class="btn pri sm" id="h-copy">Copiar</button><button type="button" class="btn sm" id="h-dl">Baixar arquivo</button><span class="toast" id="h-toast" aria-live="polite"></span></div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap"><p><b>Atenção clínica.</b> Estimativa quantitativa, não diagnóstico nem recomendação de tratamento. A qualidade da saída depende da chance inicial informada e de quanto os dados do exame valem para a sua população. Cálculo feito no próprio aparelho.</p></div>
+</footer>
+</div>
+
+<script>
+(()=>{
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const app=$('#app');
+const KEY='clinibayes.v1.';
+const ls={get(k,d){try{const v=localStorage.getItem(KEY+k);return v==null?d:JSON.parse(v)}catch(e){return d}},
+          set(k,v){try{localStorage.setItem(KEY+k,JSON.stringify(v))}catch(e){}}};
+
+/* ---------- números ---------- */
+function parse(s){s=String(s??'').trim().replace(/\s/g,'').replace(',','.');if(s==='')return null;const n=Number(s);return Number.isFinite(n)?n:NaN}
+function val(id){return parse($('#'+id).value)}
+function pct(p,dig){
+  if(!Number.isFinite(p))return '—';
+  const v=p*100;let d=dig;
+  if(d==null){d=1;if(v>0&&v<1)d=2;if(v>99.9&&v<100)d=2;if(v>0&&v<0.01)return '<0,01%';if(v<100&&v>99.99)return '>99,99%'}
+  return v.toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d})+'%';
+}
+function nf(x,d=2){if(x===Infinity)return '∞';if(!Number.isFinite(x))return '—';return x.toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d})}
+function int(x){return Math.round(x).toLocaleString('pt-BR')}
+function per100(p){const v=p*100;if(v>0&&v<1)return 'menos de 1';if(v<100&&v>99)return 'mais de 99';return v.toLocaleString('pt-BR',{maximumFractionDigits:v<10?1:0})}
+
+/* ---------- Bayes ---------- */
+function lrs(se,sp){return{p:sp>=1?(se>0?Infinity:NaN):se/(1-sp),n:sp<=0?NaN:(1-se)/sp}}
+function upd(pre,lr){if(lr===Infinity)return pre>0?1:0;if(!(lr>=0)||!(pre>=0&&pre<1))return NaN;const o=pre/(1-pre)*lr;return o/(1+o)}
+function odds(p){return p/(1-p)}
+function oddsTxt(p){if(p<=0)return '0 : 1';if(p>=1)return '∞';const o=odds(p);return o>=1?`${nf(o,o<10?2:1)} : 1`:`1 : ${nf(1/o,1/o<10?2:1)}`}
+
+/* ---------- abas e modo ---------- */
+const TABS=['calcular','sequencia','comparar','exemplos','entenda','historico'];
+function showTab(t){if(!TABS.includes(t))t='calcular';$$('nav.tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===t));$$('section.tab').forEach(s=>s.classList.toggle('on',s.id==='tab-'+t));if(t==='historico')renderHist();ls.set('tab',t)}
+$$('nav.tabs button').forEach(b=>b.onclick=()=>{showTab(b.dataset.tab);try{history.replaceState(null,'','#'+b.dataset.tab)}catch(e){}window.scrollTo({top:0})});
+function setMode(m){app.dataset.mode=m;$$('.seg [data-mode]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.mode===m));$('#calcs').open=(m==='didatico');ls.set('mode',m)}
+$$('.seg [data-mode]').forEach(b=>b.onclick=()=>setMode(b.dataset.mode));
+
+/* ---------- ajuda contextual ---------- */
+document.addEventListener('click',e=>{const b=e.target.closest('.help');if(!b)return;const t=$('#'+b.dataset.tip);const open=b.getAttribute('aria-expanded')!=='true';b.setAttribute('aria-expanded',open);t.hidden=!open});
+
+/* ---------- CALCULAR ---------- */
+let inMode='ss';
+function setIn(m){inMode=m;$$('[data-in]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.in===m));$('#in-ss').hidden=m!=='ss';$('#in-lr').hidden=m!=='lr';$$('.ss-only').forEach(e=>e.hidden=m!=='ss');calc()}
+$$('[data-in]').forEach(b=>b.onclick=()=>setIn(b.dataset.in));
+
+function msg(id,text,kind){const m=$('#m-'+id);if(!m)return;m.textContent=text||'';m.className='msg'+(kind?' '+kind:'');const f=m.closest('.field');if(f)f.dataset.state=kind==='err'?'err':''}
+function pctField(id,{req=true,open=false}={}){
+  const v=val('c-'+id);
+  if(v===null){if(req){msg(id,'Preencha este campo.','err');return NaN}msg(id,'');return null}
+  if(Number.isNaN(v)){msg(id,'Use só números, como 12 ou 12,5.','err');return NaN}
+  if(v<0||v>100){msg(id,'Use um valor de 0 a 100.','err');return NaN}
+  if(open&&(v===0||v===100)){msg(id,'Com 0% ou 100% nenhum exame muda a resposta. Use um valor entre os dois.','err');return NaN}
+  msg(id,'');return v/100;
+}
+function readCalc(){
+  const r={ok:true,warn:[]};
+  r.dz=$('#c-dz').value.trim();r.tx=$('#c-tx').value.trim();r.mode=inMode;
+  r.pre=pctField('pre',{open:true});
+  if(inMode==='ss'){
+    r.se=pctField('se');r.sp=pctField('sp');
+    if(r.se>=0&&r.sp>=0){
+      const L=lrs(r.se,r.sp);r.lrp=L.p;r.lrn=L.n;
+      if(r.se+r.sp<1){msg('sp','Sensibilidade + especificidade abaixo de 100%: o exame erra mais que o acaso. Confira se os valores não estão trocados.','warn')}
+      else if(Math.abs(r.se+r.sp-1)<1e-9){msg('sp','Sensibilidade + especificidade = 100%: este exame não muda a chance em nada.','warn')}
+      if(r.sp===0){msg('sp','Com especificidade 0% todo sadio dá positivo e um negativo é impossível.','err');r.ok=false}
+      if(r.se===0&&r.sp===1){msg('se','Com sensibilidade 0% e especificidade 100% o exame nunca dá positivo.','err');r.ok=false}
+    }
+  }else{
+    const p=val('c-lrp'),n=val('c-lrn');
+    if(p===null||Number.isNaN(p)||p<=0){msg('lrp',p===null?'Preencha este campo.':'Use um número maior que zero.','err');r.lrp=NaN}
+    else{r.lrp=p;msg('lrp',p<1?'Razão do positivo abaixo de 1: o positivo diminuiria a suspeita. É incomum; confira.':'',p<1?'warn':'')}
+    if(n===null||Number.isNaN(n)||n<0){msg('lrn',n===null?'Preencha este campo.':'Use um número de zero para cima.','err');r.lrn=NaN}
+    else{r.lrn=n;msg('lrn',n>1?'Razão do negativo acima de 1: o negativo aumentaria a suspeita. É incomum; confira.':'',n>1?'warn':'')}
+  }
+  // limiares
+  r.tt=pctField('tt');r.tr=pctField('tr');
+  if(r.tt>=0&&r.tr>=0&&r.tt>=r.tr){msg('tr','O limiar de tratar precisa ser maior que o de testar.','err');r.tr=NaN}
+  r.thOk=r.tt>=0&&r.tr>=0;
+  // faixas
+  r.ci=null;msg('ci','');
+  const g=id=>{const v=val(id);return v===null?null:(Number.isNaN(v)||v<0||v>100)?NaN:v/100};
+  let preL=g('c-preL'),preU=g('c-preU');
+  let ciErr='';
+  if(Number.isNaN(preL)||Number.isNaN(preU))ciErr='Faixas usam valores de 0 a 100.';
+  const pre=r.pre;
+  if(!ciErr&&pre>0){
+    preL=preL??pre;preU=preU??pre;
+    if(preL>pre||preU<pre)ciErr='A faixa da chance inicial precisa conter o valor central.';
+    if(preL<=0||preU>=1)ciErr='A faixa da chance inicial precisa ficar entre 0% e 100%, sem os extremos.';
+    let lpLo=r.lrp,lpHi=r.lrp,lnLo=r.lrn,lnHi=r.lrn,any=(preL!==pre||preU!==pre);
+    if(inMode==='ss'&&r.se>=0&&r.sp>=0&&!ciErr){
+      let seL=g('c-seL'),seU=g('c-seU'),spL=g('c-spL'),spU=g('c-spU');
+      if([seL,seU,spL,spU].some(Number.isNaN))ciErr='Faixas usam valores de 0 a 100.';
+      else{
+        if(seL!=null||seU!=null||spL!=null||spU!=null)any=true;
+        seL=seL??r.se;seU=seU??r.se;spL=spL??r.sp;spU=spU??r.sp;
+        if(seL>r.se||seU<r.se)ciErr='O intervalo da sensibilidade precisa conter o valor central.';
+        else if(spL>r.sp||spU<r.sp)ciErr='O intervalo da especificidade precisa conter o valor central.';
+        else if(spL<=0)ciErr='O limite inferior da especificidade precisa ser maior que zero.';
+        else{lpLo=lrs(seL,spL).p;lpHi=lrs(seU,spU).p;lnLo=lrs(seU,spU).n;lnHi=lrs(seL,spL).n}
+      }
+    }
+    if(ciErr){msg('ci',ciErr,'err')}
+    else if(any){r.ci={preL,preU,lpLo,lpHi,lnLo,lnHi,ppLo:upd(preL,lpLo),ppHi:upd(preU,lpHi),pnLo:upd(preL,lnLo),pnHi:upd(preU,lnHi)}}
+  }
+  if(!(r.pre>0)||!(r.lrp>=0||r.lrp===Infinity)||!(r.lrn>=0))r.ok=false;
+  return r;
+}
+
+const ZN=['abaixo do limiar de testar','na zona de dúvida','acima do limiar de tratar'];
+function zone(p,tt,tr){return p<tt?0:p<tr?1:2}
+
+function interpTxt(r){
+  const dz=r.dz||'a doença';const L=[];
+  L.push(`<p>Antes do exame, cerca de <b>${per100(r.pre)} em cada 100</b> pessoas como esta têm ${esc(dz)}.</p>`);
+  const up=r.pp/r.pre;let a;
+  if(r.pp>=0.9)a='O positivo deixa a doença muito provável, se a chance inicial estiver bem estimada.';
+  else if(up>=3)a='A suspeita sobe bastante'+(r.pp<0.5?', mas a maioria de quem dá positivo ainda não tem a doença.':r.pp<0.75?', mas uma parte grande dos positivos ainda é alarme falso.':'.');
+  else if(up>=1.25)a='A suspeita sobe pouco.';
+  else a='O positivo quase não muda nada.';
+  L.push(`<p>Se o exame der <b style="color:var(--pos)">positivo</b>, passam a ser <b>${per100(r.pp)} em cada 100</b>. ${a}</p>`);
+  const dn=r.pre/Math.max(r.pn,1e-12);let b;
+  if(r.pn<=0.02)b='O negativo torna a doença improvável.';
+  else if(dn>=3)b='A suspeita cai bastante'+(r.pn>0.1?', mas ainda não dá para descartar.':'.');
+  else if(dn>=1.25)b='A suspeita cai pouco.';
+  else b='O negativo quase não muda nada.';
+  L.push(`<p>Se der <b style="color:var(--neg)">negativo</b>, ficam <b>${per100(r.pn)} em cada 100</b>. ${b}</p>`);
+  if(r.mode==='ss'&&r.se-r.pp>0.15)L.push(`<p class="trap">Repare: a sensibilidade é ${pct(r.se,0)}, mas a chance de doença depois de um positivo é ${pct(r.pp)}. A sensibilidade responde "entre os doentes, quantos dão positivo"; aqui a pergunta é "entre os positivos, quantos são doentes".</p>`);
+  return L.join('');
+}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+
+// grade de pessoas
+const ppl=$('#people');for(let i=0;i<1000;i++)ppl.appendChild(document.createElement('i'));
+function counts(pre,se,sp){const D=Math.round(pre*1000),N=1000-D,TP=Math.round(se*D),TN=Math.round(sp*N);return{D,N,TP,FN:D-TP,TN,FP:N-TN}}
+
+let last=null;
+function calc(){
+  const r=readCalc();
+  const res=$('#results');
+  if(!r.ok){res.classList.add('stale');$('#c-status').textContent='Corrija os campos';$('#c-status').className='chip bad';last=null;return}
+  res.classList.remove('stale');$('#c-status').textContent='Valores válidos';$('#c-status').className='chip ok';
+  r.pp=upd(r.pre,r.lrp);r.pn=upd(r.pre,r.lrn);last=r;
+  $('#o-pp').textContent=pct(r.pp);$('#o-pn').textContent=pct(r.pn);
+  $('#o-ppr').textContent=r.ci?`faixa ${pct(r.ci.ppLo)} a ${pct(r.ci.ppHi)}`:`razão do positivo ${nf(r.lrp)}`;
+  $('#o-pnr').textContent=r.ci?`faixa ${pct(r.ci.pnLo)} a ${pct(r.ci.pnHi)}`:`razão do negativo ${nf(r.lrn)}`;
+  $('#o-interp').innerHTML=interpTxt(r);
+  // limiares
+  if(r.thOk){
+    $('#th-box').style.opacity='';
+    const sp=$$('#th-track span');sp[0].style.width=r.tt*100+'%';sp[1].style.width=(r.tr-r.tt)*100+'%';sp[2].style.width=(1-r.tr)*100+'%';
+    $('#mk-pre').style.left=r.pre*100+'%';$('#mk-pp').style.left=r.pp*100+'%';$('#mk-pn').style.left=r.pn*100+'%';
+    $('#th-ticks').innerHTML=`<span style="left:0">0%</span><span style="left:${r.tt*100}%">${pct(r.tt,0)}</span><span style="left:${r.tr*100}%">${pct(r.tr,0)}</span><span style="left:100%">100%</span>`;
+    $('#th-legend').innerHTML=`<span><i class="dot" style="box-shadow:inset 0 0 0 2.5px var(--ink)"></i>antes ${pct(r.pre)}</span><span><i class="dot" style="background:var(--pos)"></i>se positivo ${pct(r.pp)}</span><span><i class="dot" style="background:var(--neg)"></i>se negativo ${pct(r.pn)}</span><span class="note">faixas: descartar · testar mais · tratar</span>`;
+    const z0=zone(r.pre,r.tt,r.tr),zp=zone(r.pp,r.tt,r.tr),zn=zone(r.pn,r.tt,r.tr);
+    const ch=(z,lab)=>z===z0?`<span>Um resultado ${lab} <b>não muda a conduta</b>: a chance continua ${ZN[z]}.</span>`:`<span>Um resultado ${lab} <b>muda a conduta</b>: a chance vai de ${ZN[z0]} para ${ZN[z]}.</span>`;
+    let extra='';if(zp===z0&&zn===z0)extra='<span class="note">Nenhum dos dois resultados muda a decisão. Vale perguntar se o exame é necessário.</span>';
+    $('#th-conduct').innerHTML=ch(zp,'positivo')+ch(zn,'negativo')+extra;
+  }else{$('#th-box').style.opacity='.4'}
+  // frequências
+  const hasF=r.mode==='ss';$('#freq-on').hidden=!hasF;$('#freq-off').hidden=hasF;
+  if(hasF){
+    const c=counts(r.pre,r.se,r.sp);const cells=ppl.children;let i=0;
+    const fill=(n,cls)=>{for(let k=0;k<n;k++)cells[i++].className=cls};
+    fill(c.TP,'tp');fill(c.FN,'fn');fill(c.FP,'fp');fill(c.TN,'');
+    const pos=c.TP+c.FP,neg=c.FN+c.TN;
+    $('#freq-txt').innerHTML=`<p>Das 1.000, <b>${int(c.D)}</b> têm ${esc(r.dz||'a doença')} e <b>${int(c.N)}</b> não têm.</p>
+      <p><b>${int(pos)}</b> dão positivo: ${int(c.TP)} doentes e ${int(c.FP)} sem a doença. Entre os positivos, ${int(c.TP)} de ${int(pos)} são doentes.</p>
+      <p><b>${int(neg)}</b> dão negativo: ${int(c.TN)} sem a doença e ${int(c.FN)} doentes que o exame não pegou.</p>
+      <p class="note">Contagens arredondadas para pessoas inteiras; as porcentagens acima usam os valores exatos.</p>`;
+    $('#t2').innerHTML=`<thead><tr><th></th><th>Com a doença</th><th>Sem a doença</th><th>Total</th></tr></thead>
+      <tbody><tr><th>Exame positivo</th><td class="tp num">${int(c.TP)}<br><small>verdadeiros positivos</small></td><td class="fp num">${int(c.FP)}<br><small>falsos positivos</small></td><td class="num">${int(pos)}</td></tr>
+      <tr><th>Exame negativo</th><td class="num">${int(c.FN)}<br><small>falsos negativos</small></td><td class="num">${int(c.TN)}<br><small>verdadeiros negativos</small></td><td class="num">${int(neg)}</td></tr>
+      <tr><th>Total</th><td class="num">${int(c.D)}</td><td class="num">${int(c.N)}</td><td class="num">1.000</td></tr></tbody>`;
+  }
+  // contas
+  const o=odds(r.pre),op=o*r.lrp,on=o*r.lrn;
+  let s='';
+  if(r.mode==='ss')s+=`<p><b>1. Razões do exame.</b> Razão do positivo = sensibilidade ÷ (1 − especificidade). Razão do negativo = (1 − sensibilidade) ÷ especificidade.</p>
+    <div class="eq">LR+ = ${nf(r.se,3)} ÷ ${nf(1-r.sp,3)} = ${nf(r.lrp)}&nbsp;&nbsp;&nbsp;LR− = ${nf(1-r.se,3)} ÷ ${nf(r.sp,3)} = ${nf(r.lrn)}</div>`;
+  else s+=`<p><b>1. Razões do exame</b>, informadas diretamente: LR+ = ${nf(r.lrp)}, LR− = ${nf(r.lrn)}.</p>`;
+  s+=`<p><b>2. Chance inicial em forma de "contra".</b> Odds = p ÷ (1 − p).</p><div class="eq">${nf(r.pre,3)} ÷ ${nf(1-r.pre,3)} = ${nf(o,4)}  (${oddsTxt(r.pre)})</div>
+    <p><b>3. Multiplicar pela razão.</b></p><div class="eq">positivo: ${nf(o,4)} × ${nf(r.lrp)} = ${nf(op,4)}&nbsp;&nbsp;&nbsp;negativo: ${nf(o,4)} × ${nf(r.lrn)} = ${nf(on,4)}</div>
+    <p><b>4. Voltar para porcentagem.</b> p = odds ÷ (1 + odds).</p><div class="eq">positivo: ${nf(op,4)} ÷ ${nf(1+op,4)} = ${pct(r.pp)}&nbsp;&nbsp;&nbsp;negativo: ${nf(on,4)} ÷ ${nf(1+on,4)} = ${pct(r.pn)}</div>`;
+  if(r.mode==='ss'){const tp=r.se*r.pre,fp=(1-r.sp)*(1-r.pre),fn=(1-r.se)*r.pre,tn=r.sp*(1-r.pre);
+    s+=`<p><b>Conferência pela tabela.</b> Chance depois do positivo = verdadeiros positivos ÷ todos os positivos.</p><div class="eq">${nf(tp,4)} ÷ (${nf(tp,4)} + ${nf(fp,4)}) = ${pct(tp/(tp+fp))}&nbsp;&nbsp;&nbsp;negativo: ${nf(fn,4)} ÷ (${nf(fn,4)} + ${nf(tn,4)}) = ${pct(fn/(fn+tn))}</div>`}
+  if(r.ci)s+=`<p><b>Faixa conservadora.</b> Combina o pior e o melhor caso de cada número.</p><div class="eq">LR+ de ${nf(r.ci.lpLo)} a ${nf(r.ci.lpHi)}; LR− de ${nf(r.ci.lnLo)} a ${nf(r.ci.lnHi)}; chance inicial de ${pct(r.ci.preL)} a ${pct(r.ci.preU)}</div>`;
+  $('#steps').innerHTML=s;
+  saveInputs();
+}
+
+const FIELDS=['c-dz','c-tx','c-pre','c-se','c-sp','c-lrp','c-lrn','c-tt','c-tr','c-preL','c-preU','c-seL','c-seU','c-spL','c-spU'];
+const DEF={'c-dz':'','c-tx':'','c-pre':'10','c-se':'90','c-sp':'90','c-lrp':'9','c-lrn':'0,11','c-tt':'5','c-tr':'70','c-preL':'','c-preU':'','c-seL':'','c-seU':'','c-spL':'','c-spU':''};
+function saveInputs(){const o={inMode};FIELDS.forEach(f=>o[f]=$('#'+f).value);ls.set('inputs',o)}
+function loadInputs(o){FIELDS.forEach(f=>{if(o&&o[f]!=null)$('#'+f).value=o[f]});setIn(o&&o.inMode==='lr'?'lr':'ss')}
+$('#calc-form').addEventListener('input',calc);
+$('#calc-form').addEventListener('submit',e=>e.preventDefault());
+$('#c-reset').onclick=()=>loadInputs({...DEF,inMode:'ss'});
+
+function summary(r){
+  const L=[`CliniBayes${r.dz||r.tx?' — '+[r.dz,r.tx].filter(Boolean).join(' / '):''}`,
+    `Chance antes do exame: ${pct(r.pre)}`];
+  if(r.mode==='ss')L.push(`Sensibilidade ${pct(r.se)} · Especificidade ${pct(r.sp)}`);
+  L.push(`Razão do positivo (LR+) ${nf(r.lrp)} · Razão do negativo (LR−) ${nf(r.lrn)}`,
+    `Chance depois de positivo: ${pct(r.pp)}${r.ci?` (faixa ${pct(r.ci.ppLo)} a ${pct(r.ci.ppHi)})`:''}`,
+    `Chance depois de negativo: ${pct(r.pn)}${r.ci?` (faixa ${pct(r.ci.pnLo)} a ${pct(r.ci.pnHi)})`:''}`);
+  if(r.thOk)L.push(`Limiares: testar ${pct(r.tt,0)} · tratar ${pct(r.tr,0)}`);
+  L.push('Estimativa quantitativa; não é diagnóstico nem recomendação de tratamento.');
+  return L.join('\n');
+}
+async function copyText(t,box,toast){
+  try{await navigator.clipboard.writeText(t);$(toast).textContent='Copiado';setTimeout(()=>$(toast).textContent='',1800);if(box)$(box).hidden=true}
+  catch(e){if(box){$(box).hidden=false;$(box).value=t;$(box).select()}$(toast).textContent='Selecione o texto e copie manualmente'}
+}
+$('#c-copy').onclick=()=>{if(last)copyText(summary(last),'#c-copybox','#c-toast')};
+$('#c-save').onclick=()=>{if(!last)return;const r=last;const h=ls.get('hist',[]);
+  h.unshift({quando:new Date().toISOString(),doenca:r.dz,exame:r.tx,entrada:r.mode,pre:r.pre,sens:r.mode==='ss'?r.se:null,espec:r.mode==='ss'?r.sp:null,lrp:r.lrp===Infinity?'inf':r.lrp,lrn:r.lrn,pos_positivo:r.pp,pos_negativo:r.pn,
+    faixa_pos:r.ci?[r.ci.ppLo,r.ci.ppHi]:null,faixa_neg:r.ci?[r.ci.pnLo,r.ci.pnHi]:null,testar:r.thOk?r.tt:null,tratar:r.thOk?r.tr:null,inputs:JSON.parse(JSON.stringify(ls.get('inputs',{})))});
+  ls.set('hist',h.slice(0,200));$('#c-toast').textContent='Salvo no histórico';setTimeout(()=>$('#c-toast').textContent='',1800)};
+
+/* conversor */
+function convFromP(){const p=parse($('#cv-p').value);if(p===null||Number.isNaN(p)||p<0||p>=100){$('#cv-note').textContent='Probabilidade de 0 a 100, sem incluir 100.';return}
+  $('#cv-o').value=oddsTxt(p/100);$('#cv-note').textContent=`${pct(p/100)} quer dizer ${per100(p/100)} em cada 100; em forma de "contra": ${oddsTxt(p/100)}.`}
+function convFromO(){let s=$('#cv-o').value.replace(/\s/g,'').replace(/,/g,'.');let o;
+  if(s.includes(':')){const [a,b]=s.split(':').map(Number);o=a/b}else o=Number(s);
+  if(!(o>=0)||!Number.isFinite(o)){$('#cv-note').textContent='Escreva a chance como "1 : 4" ou como número decimal (0,25).';return}
+  const p=o/(1+o);$('#cv-p').value=(p*100).toLocaleString('pt-BR',{maximumFractionDigits:2});$('#cv-note').textContent=`Chance de ${nf(o,3)} para 1 = probabilidade de ${pct(p)}.`}
+$('#cv-p').oninput=convFromP;$('#cv-o').oninput=convFromO;
+
+/* ---------- SEQUÊNCIA ---------- */
+let seq=ls.get('seq',null)||{pre:'20',tests:[{nm:'Exame 1',se:'85',sp:'80',res:'+'},{nm:'Exame 2',se:'70',sp:'95',res:'+'}]};
+$('#s-pre').value=seq.pre;
+function seqRows(){
+  $('#seq-rows').innerHTML=seq.tests.map((t,i)=>`<div class="seqrow" data-i="${i}">
+    <span class="ix">${i+1}</span>
+    <div class="field nm"><label class="lab" for="s-nm${i}">Exame</label><div class="inp txt"><input id="s-nm${i}" data-k="nm" value="${esc(t.nm)}" maxlength="50"></div></div>
+    <div class="field"><label class="lab" for="s-se${i}">Sensibilidade</label><div class="inp"><input id="s-se${i}" data-k="se" inputmode="decimal" value="${esc(t.se)}"><span class="u">%</span></div></div>
+    <div class="field"><label class="lab" for="s-sp${i}">Especificidade</label><div class="inp"><input id="s-sp${i}" data-k="sp" inputmode="decimal" value="${esc(t.sp)}"><span class="u">%</span></div></div>
+    <div class="field"><span class="lab">Resultado</span><div class="res-tog" role="group" aria-label="Resultado do exame ${i+1}"><button type="button" class="p" data-res="+" aria-pressed="${t.res==='+'}">+</button><button type="button" class="n" data-res="-" aria-pressed="${t.res==='-'}">−</button></div></div>
+    <button type="button" class="btn sm ghost" data-del aria-label="Remover exame ${i+1}" ${seq.tests.length<2?'disabled':''}>Remover</button>
+  </div>`).join('');
+}
+$('#seq-rows').addEventListener('input',e=>{const row=e.target.closest('.seqrow');if(!row)return;seq.tests[row.dataset.i][e.target.dataset.k]=e.target.value;seqCalc()});
+$('#seq-rows').addEventListener('click',e=>{const row=e.target.closest('.seqrow');if(!row)return;const i=+row.dataset.i;
+  if(e.target.dataset.res){seq.tests[i].res=e.target.dataset.res;seqRows();seqCalc()}
+  if(e.target.hasAttribute('data-del')){seq.tests.splice(i,1);seqRows();seqCalc()}});
+$('#s-add').onclick=()=>{if(seq.tests.length>=8)return;seq.tests.push({nm:'Exame '+(seq.tests.length+1),se:'80',sp:'90',res:'+'});seqRows();seqCalc()};
+$('#s-pre').oninput=()=>{seq.pre=$('#s-pre').value;seqCalc()};
+function seqCalc(){
+  ls.set('seq',seq);
+  let p=parse(seq.pre);
+  if(p===null||Number.isNaN(p)||p<=0||p>=100){$('#m-s-pre').textContent='Use um valor entre 0 e 100, sem os extremos.';$('#m-s-pre').className='msg err';$('#seq-flow').innerHTML='';$('#seq-sum').innerHTML='';return}
+  $('#m-s-pre').textContent='';p/=100;const start=p;
+  let html=`<div class="st"><span><b>Antes</b></span><div class="bars"><span class="b1" style="width:${p*100}%;background:var(--ink)"></span></div><span class="num">${pct(p)}</span></div>`;
+  let bad=false;
+  seq.tests.forEach((t,i)=>{
+    const se=parse(t.se),sp=parse(t.sp);
+    if([se,sp].some(v=>v===null||Number.isNaN(v)||v<0||v>100)||sp===0||sp===100&&se===0){bad=true;html+=`<div class="st"><span>${i+1}. ${esc(t.nm)}</span><span class="msg err">Confira sensibilidade e especificidade (0 a 100).</span><span></span></div>`;return}
+    if(bad)return;
+    const L=lrs(se/100,sp/100),lr=t.res==='+'?L.p:L.n,q=upd(p,lr);
+    const col=t.res==='+'?'var(--pos)':'var(--neg)';
+    html+=`<div class="st"><span>${i+1}. ${esc(t.nm)} <b style="color:${col}">${t.res==='+'?'positivo':'negativo'}</b><br><small class="note">razão ${nf(lr)} · de ${pct(p)}</small></span>
+      <div class="bars"><span class="b0" style="width:${p*100}%"></span><span class="b1" style="width:${q*100}%;background:${col}"></span></div><span class="num"><b>${pct(q)}</b></span></div>`;
+    p=q;
+  });
+  $('#seq-flow').innerHTML=html;
+  $('#seq-sum').innerHTML=bad?'':`<p>Partindo de <b>${pct(start)}</b>, depois de ${seq.tests.length} exame${seq.tests.length>1?'s':''} a chance está em <b>${pct(p)}</b>. A barra cinza mostra onde a chance estava antes de cada exame; a colorida, onde ficou.</p>`;
+}
+
+/* ---------- COMPARAR ---------- */
+let cmp=ls.get('cmp',null)||{pre:'15',tests:[{nm:'Exame A',se:'95',sp:'60'},{nm:'Exame B',se:'70',sp:'97'},{nm:'Exame C',se:'85',sp:'85'}]};
+$('#k-pre').value=cmp.pre;
+$('#cmp-cards').innerHTML=cmp.tests.map((t,i)=>`<div class="cmpcard" data-i="${i}">
+  <div class="field"><label class="lab" for="k-nm${i}">Nome</label><div class="inp txt"><input id="k-nm${i}" data-k="nm" value="${esc(t.nm)}" maxlength="40"></div></div>
+  <div class="row2"><div class="field"><label class="lab" for="k-se${i}">Sensibilidade</label><div class="inp"><input id="k-se${i}" data-k="se" inputmode="decimal" value="${esc(t.se)}"><span class="u">%</span></div></div>
+  <div class="field"><label class="lab" for="k-sp${i}">Especificidade</label><div class="inp"><input id="k-sp${i}" data-k="sp" inputmode="decimal" value="${esc(t.sp)}"><span class="u">%</span></div></div></div></div>`).join('');
+$('#cmp-cards').addEventListener('input',e=>{const c=e.target.closest('.cmpcard');cmp.tests[c.dataset.i][e.target.dataset.k]=e.target.value;cmpCalc()});
+$('#k-pre').oninput=()=>{cmp.pre=$('#k-pre').value;cmpCalc()};
+function cmpCalc(){
+  ls.set('cmp',cmp);
+  let p=parse(cmp.pre);
+  if(p===null||Number.isNaN(p)||p<=0||p>=100){$('#m-k-pre').textContent='Use um valor entre 0 e 100, sem os extremos.';$('#m-k-pre').className='msg err';return}
+  $('#m-k-pre').textContent='';p/=100;
+  const rows=cmp.tests.map(t=>{const se=parse(t.se),sp=parse(t.sp);
+    if([se,sp].some(v=>v===null||Number.isNaN(v)||v<0||v>100)||sp===0||(sp===100&&se===0))return{t,bad:true};
+    const L=lrs(se/100,sp/100);return{t,lp:L.p,ln:L.n,pp:upd(p,L.p),pn:upd(p,L.n)}});
+  const ok=rows.filter(r=>!r.bad);
+  const bestP=ok.length?ok.reduce((a,b)=>b.lp>a.lp?b:a):null,bestN=ok.length?ok.reduce((a,b)=>b.ln<a.ln?b:a):null;
+  const bar=(v,c)=>`<div class="bars" style="width:90px;display:inline-block;vertical-align:middle;margin-left:8px"><span class="b0" style="width:${p*100}%"></span><span class="b1" style="width:${v*100}%;background:${c}"></span></div>`;
+  $('#cmp-tbl').innerHTML=`<thead><tr><th>Exame</th><th>Razão +</th><th>Razão −</th><th>Se positivo</th><th>Se negativo</th></tr></thead><tbody>`+
+    rows.map(r=>r.bad?`<tr><td>${esc(r.t.nm)}</td><td colspan="4" class="msg err" style="text-align:left">Confira sensibilidade e especificidade.</td></tr>`:
+    `<tr><td>${esc(r.t.nm)}${r===bestP?'<span class="badge p">bom para confirmar</span>':''}${r===bestN?'<span class="badge n">bom para descartar</span>':''}</td>
+     <td class="num">${nf(r.lp)}</td><td class="num">${nf(r.ln)}</td><td class="num">${pct(r.pp)}${bar(r.pp,'var(--pos)')}</td><td class="num">${pct(r.pn)}${bar(r.pn,'var(--neg)')}</td></tr>`).join('')+'</tbody>';
+  $('#cmp-sum').innerHTML=bestP&&bestN?`<p>Com chance inicial de ${pct(p)}, um positivo em <b>${esc(bestP.t.nm)}</b> leva a ${pct(bestP.pp)}, o maior salto entre os três. Um negativo em <b>${esc(bestN.t.nm)}</b> leva a ${pct(bestN.pn)}, a maior queda.</p>`:'';
+}
+
+/* ---------- EXEMPLOS ---------- */
+const EX=[
+ {t:'A armadilha clássica',pre:10,se:90,sp:90,dz:'Doença X',tx:'Exame bom',l:'Sensibilidade e especificidade de 90% parecem ótimas, mas com chance inicial de 10% metade dos positivos é alarme falso. O positivo leva a 50%, não a 90%.'},
+ {t:'Rastrear quem não tem sintomas',pre:1,se:95,sp:95,dz:'Doença rara',tx:'Rastreamento',l:'Com a doença em 1 de cada 100, mesmo um exame com 95% e 95% produz muito mais falsos que verdadeiros positivos. O positivo fica perto de 16%.'},
+ {t:'Exame muito sensível para descartar',pre:20,se:99,sp:60,dz:'Doença grave',tx:'Exame sensível',l:'Quase nenhum doente escapa, então um negativo derruba a suspeita para menos de 1%. O positivo, com tantos alarmes falsos, sobe pouco.'},
+ {t:'Exame muito específico para confirmar',pre:30,se:60,sp:99,dz:'Hipótese',tx:'Exame específico',l:'Quase nenhum sadio dá positivo, então um positivo leva a mais de 95%. O negativo, porém, deixa passar muitos doentes.'},
+ {t:'Quando o negativo não tranquiliza',pre:70,se:80,sp:90,dz:'Quadro típico',tx:'Exame razoável',l:'Com a suspeita clínica já alta, um negativo ainda deixa a chance perto de 34%. Um exame negativo não apaga um quadro clínico forte.'},
+ {t:'Um exame que não informa',pre:25,se:60,sp:40,dz:'Hipótese',tx:'Exame inútil',l:'Sensibilidade + especificidade = 100%. As razões ficam em 1 e nada muda: positivo ou negativo, a chance continua 25%.'}
+];
+$('#ex-grid').innerHTML=EX.map((e,i)=>{const L=lrs(e.se/100,e.sp/100),pp=upd(e.pre/100,L.p),pn=upd(e.pre/100,L.n);
+  return`<article class="ex"><span class="kicker">Cenário didático · valores fictícios</span><h3>${e.t}</h3>
+  <div class="vals">antes ${e.pre}% · sens. ${e.se}% · espec. ${e.sp}%<br>positivo → ${pct(pp)} · negativo → ${pct(pn)}</div>
+  <p>${e.l}</p><div class="btns"><button type="button" class="btn sm pri" data-ex="${i}">Abrir no cálculo</button></div></article>`}).join('');
+$('#ex-grid').addEventListener('click',e=>{const b=e.target.closest('[data-ex]');if(!b)return;const x=EX[b.dataset.ex];
+  loadInputs({...DEF,'c-dz':x.dz,'c-tx':x.tx,'c-pre':String(x.pre),'c-se':String(x.se),'c-sp':String(x.sp),inMode:'ss'});showTab('calcular');window.scrollTo({top:0})});
+
+/* ---------- HISTÓRICO ---------- */
+function renderHist(){
+  const h=ls.get('hist',[]);
+  if(!h.length){$('#h-list').innerHTML='<p class="hist-empty">Nenhum cálculo salvo ainda. Na aba Calcular, use "Salvar no histórico".</p>';return}
+  $('#h-list').innerHTML=`<div class="scroll"><table class="tbl"><thead><tr><th>Quando</th><th>Hipótese / exame</th><th>Antes</th><th>Exame</th><th>Se +</th><th>Se −</th><th></th></tr></thead><tbody>`+
+   h.map((x,i)=>`<tr><td class="num" style="text-align:left">${new Date(x.quando).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}</td>
+   <td>${esc([x.doenca,x.exame].filter(Boolean).join(' / ')||'—')}</td><td class="num">${pct(x.pre)}</td>
+   <td class="num">${x.entrada==='ss'?`${pct(x.sens,0)} / ${pct(x.espec,0)}`:`LR ${nf(x.lrp==='inf'?Infinity:x.lrp)} / ${nf(x.lrn)}`}</td>
+   <td class="num">${pct(x.pos_positivo)}</td><td class="num">${pct(x.pos_negativo)}</td>
+   <td><span class="btns" style="justify-content:flex-end;flex-wrap:nowrap"><button type="button" class="btn sm" data-open="${i}">Abrir</button><button type="button" class="btn sm ghost danger" data-rm="${i}" aria-label="Remover">×</button></span></td></tr>`).join('')+'</tbody></table></div>';
+}
+$('#h-list').addEventListener('click',e=>{const h=ls.get('hist',[]);
+  if(e.target.dataset.open!=null){loadInputs(h[e.target.dataset.open].inputs);showTab('calcular')}
+  if(e.target.dataset.rm!=null){h.splice(e.target.dataset.rm,1);ls.set('hist',h);renderHist()}});
+function exp(kind){const h=ls.get('hist',[]);let t;
+  if(kind==='json')t=JSON.stringify(h.map(({inputs,...r})=>r),null,2);
+  else{const cols=['quando','doenca','exame','entrada','pre','sens','espec','lrp','lrn','pos_positivo','pos_negativo','testar','tratar'];
+    const q=v=>v==null?'':/[;"\n]/.test(String(v))?`"${String(v).replace(/"/g,'""')}"`:String(v);
+    t=[cols.join(';'),...h.map(r=>cols.map(c=>q(r[c])).join(';'))].join('\n')}
+  $('#h-exp').hidden=false;$('#h-text').value=t;$('#h-text').dataset.kind=kind;$('#h-toast').textContent=kind==='csv'?'Salve como .csv (separador ponto e vírgula)':'Salve como .json'}
+$('#h-csv').onclick=()=>exp('csv');$('#h-json').onclick=()=>exp('json');
+$('#h-copy').onclick=()=>copyText($('#h-text').value,null,'#h-toast');
+$('#h-clear').onclick=()=>{$('#h-confirm').hidden=false;$('#h-clear').hidden=true};
+$('#h-no').onclick=()=>{$('#h-confirm').hidden=true;$('#h-clear').hidden=false};
+$('#h-yes').onclick=()=>{ls.set('hist',[]);$('#h-confirm').hidden=true;$('#h-clear').hidden=false;$('#h-exp').hidden=true;renderHist()};
+
+/* ---------- início ---------- */
+setMode(ls.get('mode','didatico'));
+loadInputs(ls.get('inputs',{...DEF,inMode:'ss'}));
+seqRows();seqCalc();cmpCalc();convFromP();
+const h=(location.hash||'').slice(1);showTab(TABS.includes(h)?h:'calcular');
+window.CB={lrs,upd,counts,pct};
+})();
+</script>
+
+<script>
+(()=>{
+const $=s=>document.querySelector(s);
+// download real do histórico exportado
+$('#h-dl').onclick=()=>{const t=$('#h-text').value,k=$('#h-text').dataset.kind||'csv';
+  const blob=new Blob([k==='csv'?'\ufeff'+t:t],{type:k==='csv'?'text/csv;charset=utf-8':'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='clinibayes-historico-'+new Date().toISOString().slice(0,10)+'.'+k;
+  document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)};
+// aviso de instalação
+const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+const ios=/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+let dismissed=false;try{dismissed=localStorage.getItem('clinibayes.v1.noinstall')==='1'}catch(e){}
+const box=$('#install'),txt=$('#install-txt'),go=$('#install-go');let deferred=null;
+$('#install-no').onclick=()=>{box.hidden=true;try{localStorage.setItem('clinibayes.v1.noinstall','1')}catch(e){}};
+if(!standalone&&!dismissed){
+  if(ios){txt.innerHTML='Para instalar no iPhone: toque em <b>Compartilhar</b> e depois em <b>Adicionar à Tela de Início</b>.';box.hidden=false}
+  addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferred=e;txt.textContent='Instale a CliniBayes para abrir como app, inclusive sem internet.';go.hidden=false;box.hidden=false});
+  go.onclick=async()=>{if(!deferred)return;deferred.prompt();await deferred.userChoice;deferred=null;box.hidden=true};
+}
+addEventListener('appinstalled',()=>{box.hidden=true});
+// funcionamento offline
+if('serviceWorker' in navigator){
+  const had=!!navigator.serviceWorker.controller;let done=false;
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had&&!done){done=true;location.reload()}});
+  addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+}
+})();
+</script>
+</body>
+</html>

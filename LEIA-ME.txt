@@ -1,0 +1,28 @@
+CliniBayes — app instalável (aplicativo web progressivo)
+
+Arquivos
+  index.html             o app inteiro
+  manifest.webmanifest   nome, ícones e cores do app instalado
+  sw.js                  guarda o app no aparelho para funcionar sem internet
+  icons/                 ícones da tela de início
+
+Colocar no ar (GitHub Pages, gratuito)
+  1. Crie uma conta em github.com e um repositório público chamado "clinibayes".
+  2. No repositório: Add file → Upload files. Arraste index.html, manifest.webmanifest,
+     sw.js e a pasta icons inteira. Clique em "Commit changes".
+  3. Settings → Pages → Source: "Deploy from a branch" → Branch: main, pasta "/ (root)" → Save.
+  4. Em 1 a 2 minutos o app fica em https://SEU-USUARIO.github.io/clinibayes/
+
+Instalar
+  iPhone: abra o endereço no Safari → Compartilhar → Adicionar à Tela de Início.
+  Android e computador (Chrome ou Edge): botão "Instalar" na página ou ícone na barra de endereço.
+  Abra uma vez com internet; depois funciona offline.
+
+Atualizar
+  Envie o index.html novo pelo mesmo "Upload files" (ele substitui o antigo).
+  Quem já instalou recebe a versão nova na próxima vez que abrir o app com internet.
+  Se mudar ícones ou o manifesto, aumente a versão em sw.js (clinibayes-v1 → clinibayes-v2).
+
+Privacidade
+  O repositório público mostra o código, não os dados. Cálculos e histórico
+  ficam só no aparelho de cada pessoa.
